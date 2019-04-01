@@ -1,0 +1,9 @@
+<litepal>
+    <dbname value="ku_weather"/>
+    <version value="1"/>
+    <list>
+        <mapping class="com.kuweather.android.db.Province"/>
+        <mapping class="com.kuweather.android.db.City"/>
+        <mapping class="com.kuweather.android.db.County"/>
+    </list>
+</litepal>
