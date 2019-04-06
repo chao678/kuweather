@@ -5,11 +5,14 @@ import android.preference.PreferenceManager;
 import android.support.v4.widget.NestedScrollView;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.kuweather.android.bean.Weather;
 import com.kuweather.android.util.HttpUtil;
 import com.kuweather.android.util.Utility;
@@ -20,7 +23,7 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 
-public class WeatherActivity extends AppCompatActivity {
+public class WeatherActivity extends BaseActivity {
 
     private NestedScrollView weatherLayout;
     private TextView title_city;
@@ -33,6 +36,7 @@ public class WeatherActivity extends AppCompatActivity {
     private TextView comfort_text;
     private TextView car_wash_text;
     private TextView sport_text;
+    private ImageView bing_pic_img;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +45,12 @@ public class WeatherActivity extends AppCompatActivity {
 
         initView();
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String bingPic = prefs.getString("bing_pic", null);
+        if (bingPic != null) {
+            Glide.with(this).load(bingPic).into(bing_pic_img);
+        } else {
+            loadBingPic();
+        }
         String weatherString = prefs.getString("weather", null);
         if (weatherString != null) {
             //有缓存时直接解析天气数据
@@ -55,6 +65,7 @@ public class WeatherActivity extends AppCompatActivity {
     }
 
     private void initView() {
+        bing_pic_img = findViewById(R.id.bing_pic_img);
         weatherLayout = findViewById(R.id.weather_layout);
         title_city = findViewById(R.id.title_city);
         title_update_time = findViewById(R.id.title_update_time);
@@ -66,6 +77,30 @@ public class WeatherActivity extends AppCompatActivity {
         comfort_text = findViewById(R.id.comfort_text);
         car_wash_text = findViewById(R.id.car_wash_text);
         sport_text = findViewById(R.id.sport_text);
+    }
+
+    private void loadBingPic() {
+        String requestBingPic = "http://guolin.tech/api/bing_pic";
+        HttpUtil.sendOkHttpRequest(requestBingPic, new Callback() {
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                final String bingPic = response.body().string();
+                SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit();
+                editor.putString("bing_pic", bingPic);
+                editor.apply();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Glide.with(WeatherActivity.this).load(bingPic).into(bing_pic_img);
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     private void requestWeather(String weatherId) {
@@ -102,9 +137,45 @@ public class WeatherActivity extends AppCompatActivity {
                 });
             }
         });
+        loadBingPic();
     }
 
+    /**
+     * 处理并显示Weather实体类中的数据
+     * @param weather
+     */
     private void showWeatherInfo(Weather weather) {
-
+        String cityName = weather.getBasic().getCity();
+        String updateTime = weather.getBasic().getUpdate().getLoc().split(" ")[1];
+        String degree = weather.getNow().getTmp() + "℃";
+        String weatherInfo = weather.getNow().getCond().getTxt();
+        title_city.setText(cityName);
+        title_update_time.setText(updateTime);
+        degree_text.setText(degree);
+        weather_info_text.setText(weatherInfo);
+        forecast_layout.removeAllViews();
+        for (Weather.DailyForecastBean forecast : weather.getDaily_forecast()) {
+            View view = LayoutInflater.from(this).inflate(R.layout.item_forecast, forecast_layout, false);
+            TextView date_text = view.findViewById(R.id.date_text);
+            TextView init_text = view.findViewById(R.id.init_text);
+            TextView max_text = view.findViewById(R.id.max_text);
+            TextView min_text = view.findViewById(R.id.min_text);
+            date_text.setText(forecast.getDate());
+            init_text.setText(forecast.getCond().getTxt_d());
+            max_text.setText(forecast.getTmp().getMax());
+            min_text.setText(forecast.getTmp().getMin());
+            forecast_layout.addView(view);
+        }
+        if (weather.getAqi() != null) {
+            aqi_text.setText(weather.getAqi().getCity().getAqi());
+            pm25_text.setText(weather.getAqi().getCity().getPm25());
+        }
+        String comfort = "舒适度：" + weather.getSuggestion().getComf().getTxt();
+        String carWash = "洗车指数：" + weather.getSuggestion().getCw().getTxt();
+        String sport = "运动建议：" + weather.getSuggestion().getSport().getTxt();
+        comfort_text.setText(comfort);
+        car_wash_text.setText(carWash);
+        sport_text.setText(sport);
+        weatherLayout.setVisibility(View.VISIBLE);
     }
 }
