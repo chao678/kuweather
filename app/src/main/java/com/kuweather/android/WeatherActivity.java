@@ -1,5 +1,6 @@
 package com.kuweather.android;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.support.v4.view.GravityCompat;
@@ -18,6 +19,7 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.kuweather.android.bean.Weather;
+import com.kuweather.android.service.AutoUpdateService;
 import com.kuweather.android.util.HttpUtil;
 import com.kuweather.android.util.Utility;
 
@@ -153,6 +155,8 @@ public class WeatherActivity extends BaseActivity {
                             editor.putString("weather", responseText);
                             editor.apply();
                             showWeatherInfo(weather);
+                            Intent intent = new Intent(WeatherActivity.this, AutoUpdateService.class);
+                            startService(intent);
                         } else {
                             Toast.makeText(WeatherActivity.this, "获取天气信息失败", Toast.LENGTH_SHORT).show();
                         }
